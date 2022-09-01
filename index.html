@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>
+    canvas
+  </title>
+  </head>
+  <body>
+    <canvas id="canvas" width="1312" height="1184">
+      Hola tu navegador no funciona
+    </canvas>
+    <div style="float: right; margin-right: 40px">Tiempo:   <div id="count_up_timer" style="float: right;"> 00:00:0</div><br>
+    Controles: <br>
+    W => Arriba <br>
+    A => Izquierda <br>
+    S => Abajo <br>
+    D => Derecha <br>
+    P => Pausa
+  </div>
+
+    <script type="text/javascript">
+var cv = null;
+var ctx = null;
+var press = false;
+var direccion = 'up';
+var player1 = null;
+var speed = 2;
+var pause = false;
+var piso = new Image();
+var pisos = [];
+var pared = [];
+var guy = new Image();
+var wall = new Image();
+var fondo = new Audio();
+var victory = new Audio();
+var meta = null;
+var alterMeta = null;
+var inicio = true;
+var timerVariable = setInterval(countUpTimer, 1000);
+var totalSeconds = 0;
+var ganar = false;
+
+function countUpTimer() {
+  ++totalSeconds;
+  var hour = Math.floor(totalSeconds / 3600);
+  var minute = Math.floor((totalSeconds - hour * 3600) / 60);
+  var seconds = totalSeconds - (hour * 3600 + minute * 60);
+  document.getElementById("count_up_timer").innerHTML = hour + ":" + minute + ":" + seconds;
+}
+
+document.addEventListener('keydown', onKeyDown);
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+
+function onKeyDown(e) {
+  console.log(e);
+
+  if (e.key == 'w' || e.key == 'W') {
+    direccion = 'up';
+  }
+
+  if (e.key == 'a' || e.key == 'A') {
+    direccion = 'left';
+  }
+
+  if (e.key == 's' || e.key == 'S') {
+    direccion = 'down';
+  }
+
+  if (e.key == 'd' || e.key == 'D') {
+    direccion = 'right';
+  }
+
+  if (e.key == 'i' || e.key == 'I') {
+    if (inicio == true) {
+      inicio = false;
+      timerVariable = setInterval(countUpTimer, 1000);
+    }
+  }
+
+  if (e.key == 'p' || e.key == 'P') {
+    if (pause == true) {
+      pause = false;
+      timerVariable = setInterval(countUpTimer, 1000);
+    } else {
+      pause = true;
+      clearInterval(timerVariable);
+    }
+  }
+}
+
+function paint() {
+  window.requestAnimationFrame(paint);
+  meta.paint(ctx);
+  alterMeta.paint(ctx);
+  ctx.fillRect(0, 0, 1312, 1184);
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Arial';
+  for (let i = 0; i < pisos.length; i++) {
+    pisos[i].paint(ctx);
+    ctx.drawImage(piso, pisos[i].x, pisos[i].y);
+  }
+
+  ctx.drawImage(guy, player1.x, player1.y);
+
+  for (let i = 0; i < pared.length; i++) {
+    pared[i].paint(ctx);
+    ctx.drawImage(wall, pared[i].x, pared[i].y);
+  }
+
+  if (pause) {
+    fondo.pause();
+    ctx.fillStyle = 'rgba(0 ,0 ,0 ,0.5)';
+    ctx.fillRect(0, 0, 1312, 1184);
+    ctx.fillStyle = 'white';
+    ctx.fillText('P A U S E', 600, 592);
+    clearInterval(timerVariable);
+  }   else if (inicio) {
+    ctx.fillStyle = 'rgba(0 ,0 ,0 ,0.5)';
+    ctx.fillRect(0, 0, 1312, 1184);
+    ctx.fillStyle = 'white';
+    ctx.fillText('Presiona I para iniciar', 500, 592);
+  } else if (ganar) {
+    fondo.pause();
+    ctx.fillStyle = 'rgba(0 ,0 ,0 ,0.5)';
+    ctx.fillRect(0, 0, 1312, 1184);
+    ctx.fillStyle = 'white';
+    ctx.fillText('G A N A S T E ! ! !', 560, 592);
+    speed = 0;
+    clearInterval(timerVariable);
+    victory.play();
+  }else {
+    fondo.play();
+    update();
+  }
+
+}
+
+function update() {
+  if (direccion == 'up') {
+    player1.y -= speed;
+    guy.src = 'guyUp.png';
+    if (player1.y < 0) {
+      player1.y = 1184;
+    }
+  }
+
+  if (direccion == 'left') {
+    player1.x -= speed;
+    guy.src = 'guyLeft.png';
+
+    if (player1.x < 0) {
+      player1.x = 1312;
+    }
+  }
+
+  if (direccion == 'down') {
+    player1.y += speed;
+    guy.src = 'guyDown.png';
+
+    if (player1.y > 1184) {
+      player1.y = 0;
+    }
+  }
+
+  if (direccion == 'right') {
+    player1.x += speed;
+    guy.src = 'guyRight.png';
+
+    if (player1.x > 1312) {
+      player1.x = 0;
+    }
+  }
+
+  for (var i = 0; i < pared.length; i++) {
+    if (player1.intersects(pared[i])) {
+      if (direccion == 'up') {
+        player1.y += speed;
+
+      }
+
+      if (direccion == 'left') {
+        player1.x += speed;
+
+      }
+
+      if (direccion == 'down') {
+        player1.y -= speed;
+
+      }
+
+      if (direccion == 'right') {
+        player1.x -= speed;
+      }
+
+    }
+  }
+
+  if (player1.intersects(meta) || player1.intersects(alterMeta)) {
+    ganar = true;
+  }
+}
+
+function Cuadro(x, y, w, h, c) {
+  this.x = x;
+  this.y = y;
+  this.w = w;
+  this.h = h;
+  this.c = c;
+  this.intersects = function (target) {
+    if (this.x < target.x + target.w &&
+      this.x + this.w > target.x &&
+      this.y < target.y + target.h &&
+      this.y + this.h > target.y) {
+      return true;
+    }
+  };
+
+  this.paint = function (ctx) {
+    ctx.fillStyle = this.c;
+    ctx.fillRect(this.x, this.y, this.w, this.h);
+    ctx.strokeRect(this.x, this.y, this.w, this.h);
+  };
+}
+
+window.requestAnimationFrame = (function () {
+    return window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        function (callback) {
+            window.setTimeout(callback, 17); }; }());
+
+function run() {
+  cv = document.getElementById('canvas');
+  ctx = cv.getContext('2d');
+  player1 = new Cuadro(1248, 32, 20, 20, 'red');
+  meta = new Cuadro(0, 32, 20, 32, 'red');
+  alterMeta = new Cuadro(0, 1120, 20, 32, 'red');
+
+  for (let i = 0; i < 41; i++) {
+    for (let j = 0; j < 37; j++) {
+      if (i == 40 || j == 0 || j == 36 || (i == 0 && j != 1 && j != 35)) {
+        pared.push(new Cuadro(i * 32, j * 32, 32, 32, 'gray'));
+      } else {
+        pisos.push(new Cuadro(i * 32, j * 32, 32, 32, 'gray'));
+      }
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 6 || i == 16 || i == 24 || i == 28)
+    pared.push(new Cuadro(1248, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 3 || i == 5 || i == 7 || i == 11 || i == 15
+    || i == 17 || i == 23 || i == 27 || i == 29 || i == 33 || i == 35) {
+    } else {
+      pared.push(new Cuadro(1216, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 8 || i == 12 || i == 14 || i == 18 || i == 22
+    || i == 26 || i == 30 || i == 34)
+    pared.push(new Cuadro(1184, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 9 || i == 13 || i == 19 || i == 21
+    || i == 25 || i == 27 || i == 31 || i == 35) {
+    } else {
+      pared.push(new Cuadro(1152, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 8 || i == 10 || i == 16 || i == 20 || i == 22 || i == 26
+    || i == 28 || i == 32)
+    pared.push(new Cuadro(1120, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 7 || i == 9 || i == 13 || i == 17 || i == 19
+    || i == 23 || i == 27 || i == 29 || i == 35) {
+    }else {
+      pared.push(new Cuadro(1088, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 8 || i == 10 || i == 12 || i == 14 || i == 18
+    || i == 20 || i == 24 || i == 28 || i == 34)
+    pared.push(new Cuadro(1056, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 3 || i == 5 || i == 9 || i == 11 || i == 13
+     || i == 15 || i == 19 || i == 21 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(1024, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 6 || i == 12 || i == 14 || i == 16 || i == 18
+    || i == 22 || i == 34)
+    pared.push(new Cuadro(992, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11
+     || i == 13 || i == 15 || i == 17 || i == 23 || i == 35) {
+    }else {
+      pared.push(new Cuadro(960, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 12 || i == 14 || i == 24)
+    pared.push(new Cuadro(928, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 5 || i == 11 || i == 13 || i == 25) {
+    }else {
+      pared.push(new Cuadro(896, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 6 || i == 8 || i == 12 || i == 18 || i == 22 || i == 26)
+    pared.push(new Cuadro(864, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 7 || i == 9 || i == 13 || i == 15 || i == 19 || i == 21
+    || i == 23 || i == 31 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(832, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 6 || i == 10 || i == 14 || i == 16 || i == 20 || i == 22
+    || i == 24 || i == 30 || i == 32 || i == 34)
+    pared.push(new Cuadro(800, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 5 || i == 7 || i == 13 || i == 17 || i == 21 || i == 23
+    || i == 27 || i == 29 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(768, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 6 || i == 8 || i == 16 || i == 20 || i == 22
+    || i == 28 || i == 34)
+    pared.push(new Cuadro(734, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 3 || i == 5 || i == 7 || i == 12 || i == 15
+    || i == 19 || i == 21 || i == 35) {
+    }else {
+      pared.push(new Cuadro(702, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 4 || i == 6 || i == 14 || i == 18 || i == 20
+    || i == 30 || i == 32)
+    pared.push(new Cuadro(670, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 4 || i == 6 || i == 7 || i == 8 || i == 14
+    || i == 15 || i == 16 || i == 18 || i == 20 || i == 22 || i == 26
+    || i == 27 || i == 28 || i == 30 || i == 32)
+    pared.push(new Cuadro(638, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 8 || i == 16 || i == 18 || i == 20 || i == 22
+    || i == 23 || i == 24 || i == 28 || i == 32)
+    pared.push(new Cuadro(606, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 5 || i == 15 || i == 17 || i == 19 || i == 21
+    || i == 22 || i == 23 || i == 25 || i == 27 || i == 31 || i == 35) {
+    }else {
+      pared.push(new Cuadro(574, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 10 || i == 16 || i == 18 || i == 20 || i == 24
+    || i == 26 || i == 30 || i == 34)
+    pared.push(new Cuadro(542, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 3 || i == 5 || i == 6 || i == 7 || i == 9 || i == 11
+    || i == 13 || i == 14 || i == 15 || i == 19 || i == 23 || i == 25
+    || i == 29 || i == 31 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(510, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 8 || i == 10 || i == 12 || i == 17 || i == 20
+    || i == 24 || i == 28 || i == 30 || i == 32 || i == 34)
+    pared.push(new Cuadro(478, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 5 || i == 6 || i == 7 || i == 9 || i == 11
+    || i == 15 || i == 16 || i == 18 || i == 19 || i == 21 || i == 25
+    || i == 26 || i == 27 || i == 31 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(446, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 8 || i == 12 || i == 14 || i == 20 || i == 22
+    || i == 29 || i == 32 || i == 34)
+    pared.push(new Cuadro(414, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 5 || i == 6 || i == 7 || i == 13 || i == 15
+    || i == 19 || i == 21 || i == 28 || i == 30 || i == 33 || i == 35) {
+    }else {
+      pared.push(new Cuadro(382, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 4 || i == 8 || i == 14 || i == 18 || i == 20 || i == 24
+    || i == 29 || i == 31 || i == 34)
+    pared.push(new Cuadro(350, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 3 || i == 5 || i == 11 || i == 17 || i == 23
+    || i == 27 || i == 30 || i == 35) {
+    }else {
+      pared.push(new Cuadro(318, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 4 || i == 6 || i == 12 || i == 16 || i == 22 || i == 26 || i == 29)
+    pared.push(new Cuadro(286, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 7 || i == 9 || i == 13 || i == 15 || i == 21
+    || i == 25 || i == 28) {
+    }else {
+      pared.push(new Cuadro(254, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 8 || i == 10 || i == 14 || i == 18 || i == 20
+    || i == 24 || i == 27 || i == 29 || i == 31)
+    pared.push(new Cuadro(222, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 3 || i == 9 || i == 11 || i == 15 || i == 17
+    || i == 19 || i == 23 || i == 25 || i == 26 || i == 28 || i == 30
+    || i == 32 || i == 35) {
+    }else {
+      pared.push(new Cuadro(190, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 8 || i == 14 || i == 16 || i == 20 || i == 24
+    || i == 27 || i == 33)
+    pared.push(new Cuadro(158, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 3 || i == 13 || i == 15 || i == 19 || i == 21
+    || i == 23 || i == 25 || i == 26 || i == 32 || i == 34 || i == 35) {
+    }else {
+      pared.push(new Cuadro(126, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 2 || i == 4 || i == 12 || i == 14 || i == 16 || i == 20
+    || i == 22 || i == 31 || i == 33)
+    pared.push(new Cuadro(94, i * 32, 32, 32, 'gray'));
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 1 || i == 5 || i == 11 || i == 15 || i == 17 || i == 21
+    || i == 34 || i == 35) {
+    }else {
+      pared.push(new Cuadro(62, i * 32, 32, 32, 'gray'));
+    }
+  }
+
+  for (let i = 1; i < 36; i++) {
+    if (i == 6 || i == 16 || i == 20)
+    pared.push(new Cuadro(30, i * 32, 32, 32, 'gray'));
+  }
+
+  piso.src = 'piso.png';
+  guy.src = 'guyDown.png';
+  wall.src = 'wall.png';
+  fondo.src = 'fondo.mp3';
+  victory.src = 'victoria.mp3'
+  clearInterval(timerVariable);
+  paint();
+}
+
+window.addEventListener('load', run, false);
+    </script>
+  </body>
+</html>
